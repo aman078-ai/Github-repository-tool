@@ -1,0 +1,47 @@
+# GitHub Repository Intelligence Tool Configuration
+
+# Repository Scanner Exclusions
+scanner:
+  ignored_folders:
+    - "__pycache__"
+    - ".venv"
+    - "venv"
+    - ".git"
+    - "node_modules"
+    - "dist"
+    - "build"
+    - ".pytest_cache"
+    - ".mypy_cache"
+    - ".idea"
+    - ".vscode"
+  ignored_files:
+    - "*.pyc"
+    - "*.pyo"
+    - "*.pyd"
+    - "db.sqlite3"
+    - "repo_intelligence.db"
+
+# Complexity Analyzer Thresholds
+complexity:
+  low_threshold: 5
+  medium_threshold: 10
+  high_threshold: 20
+
+# Duplicate Code Detection Config
+duplicate_detector:
+  min_line_length: 4        # Minimum lines in a block to consider for duplicate hashing
+  similarity_threshold: 0.8 # Similarity ratio (0.0 to 1.0) above which code is duplicate
+
+# Database Settings
+database:
+  db_path: "repo_intelligence.db"
+
+# Visualization and Graphs
+visualization:
+  theme: "dark"             # "light" or "dark"
+  graphviz_layout: "dot"    # dot, neato, twopi, circo, fdp, sfdp
+  max_graph_nodes: 100      # Limit nodes in UI visualization for performance
+
+# Documentation Analyzer Settings
+documentation:
+  min_docstring_length: 10

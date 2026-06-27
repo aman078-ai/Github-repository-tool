@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: repo_intelligence_tool
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./repo_intelligence.db:/app/repo_intelligence.db
+      # You can mount directories you want to scan to /workspace in read-only mode:
+      # - C:/Users/name/projects:/workspace:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
