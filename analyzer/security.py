@@ -121,6 +121,93 @@ def scan_security(
                                 code_snippet=ast.unparse(node)[:100] if hasattr(ast, "unparse") else "subprocess.run(..., shell=True)",
                                 description="Found subprocess execution with 'shell=True'. Spawning shells can trigger command injection vulnerabilities."
                             ))
+                
+                # SQL Injection detection
+                elif isinstance(func, ast.Attribute) and func.attr in {"execute", "executemany"}:
+                    if node.args:
+                        first_arg = node.args[0]
+                        is_dynamic = False
+                        if isinstance(first_arg, ast.JoinedStr):
+                            is_dynamic = True
+                        elif isinstance(first_arg, ast.BinOp) and isinstance(first_arg.op, ast.Mod):
+                            is_dynamic = True
+                        elif (
+                            isinstance(first_arg, ast.Call) and 
+                            isinstance(first_arg.func, ast.Attribute) and 
+                            first_arg.func.attr == "format"
+                        ):
+                            is_dynamic = True
+                        
+                        if is_dynamic:
+                            issues.append(SecurityIssueModel(
+                                id=None,
+                                file_id=0,
+                                issue_type="SQL Injection Risk",
+                                severity="High",
+                                line_number=node.lineno,
+                                code_snippet=ast.unparse(node)[:100] if hasattr(ast, "unparse") else "execute(...)",
+                                description="Found dynamic string formatting inside database execute() call. This can lead to SQL Injection. Use parameterized queries instead."
+                            ))
+                
+                # Weak cryptographic hashing
+                elif (
+                    isinstance(func, ast.Attribute) and 
+                    func.attr in {"md5", "sha1"} and 
+                    isinstance(func.value, ast.Name) and 
+                    func.value.id == "hashlib"
+                ):
+                    issues.append(SecurityIssueModel(
+                        id=None,
+                        file_id=0,
+                        issue_type="Weak Cryptographic Hash (MD5/SHA1)",
+                        severity="Medium",
+                        line_number=node.lineno,
+                        code_snippet=ast.unparse(node)[:100] if hasattr(ast, "unparse") else "hashlib.md5/sha1(...)",
+                        description="MD5 and SHA1 are cryptographically broken algorithms vulnerable to collision attacks. Use SHA-256 (hashlib.sha256) or SHA-3 instead."
+                    ))
+                elif isinstance(func, ast.Name) and func.id in {"md5", "sha1"}:
+                    issues.append(SecurityIssueModel(
+                        id=None,
+                        file_id=0,
+                        issue_type="Weak Cryptographic Hash (MD5/SHA1)",
+                        severity="Medium",
+                        line_number=node.lineno,
+                        code_snippet=ast.unparse(node)[:100] if hasattr(ast, "unparse") else f"{func.id}(...)",
+                        description="MD5 and SHA1 are cryptographically broken algorithms. Use SHA-256 or SHA-3 instead."
+                    ))
+            
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name in {"xml.etree.ElementTree", "xml.dom.minidom"}:
+                        issues.append(SecurityIssueModel(
+                            id=None,
+                            file_id=0,
+                            issue_type="Insecure XML Parser",
+                            severity="Medium",
+                            line_number=node.lineno,
+                            code_snippet=f"import {alias.name}",
+                            description=f"Using insecure standard XML parser '{alias.name}'. Standard XML parsers are vulnerable to XML External Entity (XXE) and XML Entity Expansion attacks. Use 'defusedxml' instead."
+                        ))
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    is_insecure = False
+                    if node.module in {"xml.etree.ElementTree", "xml.dom.minidom"}:
+                        is_insecure = True
+                    elif node.module == "xml.etree" and any(n.name == "ElementTree" for n in node.names):
+                        is_insecure = True
+                    elif node.module == "xml.dom" and any(n.name == "minidom" for n in node.names):
+                        is_insecure = True
+                    
+                    if is_insecure:
+                        issues.append(SecurityIssueModel(
+                            id=None,
+                            file_id=0,
+                            issue_type="Insecure XML Parser",
+                            severity="Medium",
+                            line_number=node.lineno,
+                            code_snippet=f"from {node.module} import ...",
+                            description="Using insecure standard XML parser. Standard XML parsers are vulnerable to XML External Entity (XXE) and XML Entity Expansion attacks. Use 'defusedxml' instead."
+                        ))
     except Exception as e:
         logger.error(f"Error parsing AST security for {filepath}: {e}")
 

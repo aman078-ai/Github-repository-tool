@@ -121,16 +121,26 @@ def test_security_scanner():
     code = """
 import os
 import subprocess
+import hashlib
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 AWS_KEY = "AKIA1234567890123456"
 eval("x = 1")
 subprocess.run("ls", shell=True)
+
+# new security risks
+cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+hashlib.md5(b"secret")
 """
     issues = scan_security("unsafe.py", code)
     issue_types = [issue.issue_type for issue in issues]
     assert "Hardcoded AWS Access Key" in issue_types
     assert "Dangerous Function (eval)" in issue_types
     assert "Subprocess Command Injection (shell=True)" in issue_types
+    assert "SQL Injection Risk" in issue_types
+    assert "Weak Cryptographic Hash (MD5/SHA1)" in issue_types
+    assert "Insecure XML Parser" in issue_types
 
 def test_database_manager(temp_db):
     repo = RepositoryModel(None, "test/repo", "2026-06-27T00:00:00", "COMPLETED", 92.5)
