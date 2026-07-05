@@ -67,6 +67,61 @@ if "repo_id" in st.session_state and st.session_state["repo_id"]:
                 ),
             }
         )
+        
+        # Bug Risk Prediction
+        st.markdown("---")
+        st.subheader("⚠️ Statically Predicted Bug Risks")
+        st.write("Statically analyzes the codebase's logical structure using local heuristics to spot high-risk coding practices.")
+        
+        try:
+            from analyzer.repository import RepositoryScanner
+            from analyzer.ai_interfaces import LocalBugRiskPredictor
+            
+            repo = db.get_repository_by_id(repo_id)
+            scanner = RepositoryScanner(repo.path)
+            parsed_files = scanner.parse_repository()
+            
+            predictor = LocalBugRiskPredictor()
+            all_bug_risks = []
+            
+            # Map file paths to their complexity to scale the risk
+            file_max_complexities = {}
+            for file_model, comp_model in db.get_complexity_summaries_by_repo_id(repo_id):
+                file_max_complexities[file_model.filepath] = comp_model.max_complexity
+                
+            for rel_path, parsed in parsed_files.items():
+                comp_score = file_max_complexities.get(rel_path, 1)
+                risks = predictor.predict_bug_risks(parsed.raw_content, comp_score)
+                for risk in risks:
+                    all_bug_risks.append({
+                        "File Path": rel_path,
+                        "Line": risk["line_number"],
+                        "Risk Score": risk["risk_score"],
+                        "Category": risk["category"],
+                        "Description & Recommendations": risk["reason"]
+                    })
+            
+            if all_bug_risks:
+                df_risks = pd.DataFrame(all_bug_risks)
+                df_risks.sort_values(by="Risk Score", ascending=False, inplace=True)
+                st.dataframe(
+                    df_risks,
+                    use_container_width=True,
+                    column_config={
+                        "Risk Score": st.column_config.ProgressColumn(
+                            "Risk Score",
+                            help="Calculated probability / severity of bugs",
+                            format="%.2f",
+                            min_value=0.0,
+                            max_value=1.0,
+                        )
+                    }
+                )
+            else:
+                st.success("🎉 **No static bug risks predicted!** Code structures look clean and follow standard best practices.")
+        except Exception as e:
+            st.error(f"Error executing bug risk prediction: {e}")
+            
     else:
         st.info("No functions identified to analyze cyclomatic complexity.")
 else:
