@@ -58,5 +58,58 @@ if "repo_id" in st.session_state and st.session_state["repo_id"]:
     
     st.markdown("---")
     st.plotly_chart(create_large_files_chart(files), use_container_width=True)
+
+    # Git Version Control Insights
+    from utils import git_helper
+    repo_path = Path(repo.path)
+    if git_helper.is_git_repository(repo_path):
+        st.markdown("---")
+        st.subheader("📊 Git Version Control Insights")
+        st.write("Commit frequencies, hotspots, and active authors extracted from local Git logs.")
+        
+        col_contributors, col_hotspots = st.columns(2)
+        
+        with col_contributors:
+            st.markdown("### 👥 Top Contributors")
+            top_authors = git_helper.get_top_contributors(repo_path, max_authors=5)
+            if top_authors:
+                df_authors = pd.DataFrame(top_authors)
+                st.dataframe(
+                    df_authors,
+                    use_container_width=True,
+                    column_config={
+                        "Percentage": st.column_config.ProgressColumn(
+                            "Share of Commits",
+                            help="Commit share per developer",
+                            format="%.1f%%",
+                            min_value=0.0,
+                            max_value=100.0,
+                        )
+                    }
+                )
+            else:
+                st.info("No commit history found.")
+                
+        with col_hotspots:
+            st.markdown("### 🔥 Change Hotspots")
+            st.write("Files that are modified most frequently. High-frequency modification targets are prime candidates for bugs.")
+            hotspots = git_helper.get_file_hotspots(repo_path, max_files=5)
+            if hotspots:
+                df_hotspots = pd.DataFrame(hotspots)
+                st.dataframe(
+                    df_hotspots,
+                    use_container_width=True,
+                    column_config={
+                        "Score": st.column_config.ProgressColumn(
+                            "Activity Score",
+                            help="Percentage of total python changes in this file",
+                            format="%.1f%%",
+                            min_value=0.0,
+                            max_value=100.0,
+                        )
+                    }
+                )
+            else:
+                st.info("No hotspot files identified.")
 else:
     st.warning("Please select or scan a repository on the main dashboard first.")
