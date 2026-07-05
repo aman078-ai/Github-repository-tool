@@ -54,6 +54,29 @@ if "repo_id" in st.session_state and st.session_state["repo_id"]:
                     )
                 except Exception as e:
                     st.error(f"Download failed: {e}")
+            
+            # Interactive In-App Previewer
+            with st.expander(f"👁️ Preview {rep.report_type} Report"):
+                try:
+                    if rep.report_type == "HTML":
+                        with open(file_p, "r", encoding="utf-8", errors="ignore") as f:
+                            html_content = f.read()
+                        st.components.v1.html(html_content, height=600, scrolling=True)
+                    elif rep.report_type == "MD":
+                        with open(file_p, "r", encoding="utf-8", errors="ignore") as f:
+                            md_content = f.read()
+                        st.markdown(md_content)
+                    elif rep.report_type == "JSON":
+                        import json
+                        with open(file_p, "r", encoding="utf-8", errors="ignore") as f:
+                            json_data = json.load(f)
+                        st.json(json_data)
+                    elif rep.report_type == "CSV":
+                        import pandas as pd
+                        df = pd.read_csv(file_p)
+                        st.dataframe(df, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Failed to load preview: {e}")
             st.markdown("---")
     else:
         st.info("No report logs exist for the current repository scan.")
